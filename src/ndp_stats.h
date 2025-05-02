@@ -216,7 +216,7 @@ class NdpStats {
     uint64_t get_v_addr_unit_issue_count() { return m_v_addr_unit_issue_count; }
     uint64_t get_v_ldst_unit_issue_count() { return m_v_ldst_unit_issue_count; }
     uint64_t get_v_spad_unit_issue_count() { return m_v_spad_unit_issue_count; }
-    uint64_t inc_active_vlane_count(int active,int total) {
+    void inc_active_vlane_count(int active,int total) {
       m_v_active_lane_issue_count += active;
       m_v_total_laine_issue_count += total;
     }
