@@ -117,6 +117,7 @@ void InstructionQueue::cycle() {
       col->current_inst = &col->insts.at(col->csr.pc);
       col->pending = false;
       m_icache_queue.pop();
+      delete mf;
     } else if (status != RESERVATION_FAIL) {
       m_icache_queue.pop();
     }
