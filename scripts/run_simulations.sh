@@ -66,7 +66,7 @@ run_job() {
     CONFIG_FILE=$CONFIG_FILE1
   fi
   echo "Starting $job..."
-  TRACE_FEILE=$TRACE_DIR/$job
+  TRACE_FEILE=$TRACE_DIR/$job/0
   
   mkdir -p ./outputs/$job
   pushd ./outputs/$job
