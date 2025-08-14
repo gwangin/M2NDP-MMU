@@ -119,6 +119,12 @@ void InstructionBuffer::count_required_regs(std::deque<NdpInstruction> insts,
   RegSet used_vregs;
   RegSet used_double_vreg;
   int vmul = 1;
+  if (insts.empty()) {
+    num_xreg = 0;
+    num_freg = 0;
+    num_vreg = 0;
+    return;
+  }
   used_xregs.insert(REG_X_BASE + 1);  // ADDR
   used_xregs.insert(REG_X_BASE + 2);  // OFFSET
   for (NdpInstruction inst : insts) {

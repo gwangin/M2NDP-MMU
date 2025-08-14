@@ -54,6 +54,9 @@ void RegisterUnit::SetReady(int reg) { m_not_ready.erase(reg); }
 std::deque<NdpInstruction> RegisterUnit::Convert(
     std::deque<NdpInstruction> insts, int packet_id, RequestInfo* req) {
   std::deque<NdpInstruction> renamed_insts;
+  if (insts.empty()) {
+    return renamed_insts;
+  }
   RegisterMapKey key = packet_id;
   
   //Initialize x1, and x2 
