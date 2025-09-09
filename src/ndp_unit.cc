@@ -4,9 +4,10 @@
 
 #include <fstream>
 #include <sstream>
-
+#include "mmu.h"
 #include "ndp_instruction.h"
-#include "m2ndp_parser.h"
+#include "m2ndp_parser.h" 
+#include "spdlog/spdlog.h"
 namespace NDPSim {
 
 NdpUnit::NdpUnit(M2NDPConfig* config, MemoryMap* memory_map, int id)
@@ -70,6 +71,9 @@ NdpUnit::NdpUnit(M2NDPConfig* config, MemoryMap* memory_map, NdpStats* stats,
     m_dtlb->set_ideal_tlb();
     m_itlb->set_ideal_tlb();
   }
+  m_mmu = new MMU(m_memory_map, 0x0009000000000000ULL);
+  m_dtlb->set_mmu(m_mmu);
+  m_itlb->set_mmu(m_mmu);
   m_uthread_generator = new UThreadGenerator(m_config, m_id, &m_matched_requests);
   m_instruction_buffer =
       new InstructionBuffer(m_config->get_inst_buffer_size(),
@@ -105,6 +109,20 @@ void NdpUnit::Run(int id, NdpKernel* ndp_kernel, std::string line) {
     m_sub_core_units[i]->set_ndp_kernel(ndp_kernel);
   }
   KernelLaunchInfo* kinfo = M2NDPParser::parse_kernel_launch(line, 0);
+spdlog::info("[LAUNCH] kernel_id={} launch_id={} base={:#018x} size={} arg_size={} float_args={}",
+             kinfo->kernel_id, kinfo->launch_id, kinfo->base_addr, kinfo->size,
+             kinfo->arg_size, kinfo->num_float_args);
+
+// 정수 인자 프리뷰(최대 8개)
+int num_int = kinfo->arg_size / DOUBLE_SIZE - kinfo->num_float_args;
+for (int i = 0; i < std::min(num_int, 8); ++i) {
+  spdlog::info("[LAUNCH] arg[{}] (int64) = {:#018x}", i, (uint64_t)kinfo->args[i]);
+}
+// float 인자 프리뷰
+for (int i = 0; i < kinfo->num_float_args; ++i) {
+  spdlog::info("[LAUNCH] farg[{}] (f32) = {}", i, kinfo->float_args[i]);
+}
+
   kinfo->launch_id = 0;
   assert(kinfo->smem_size <= m_config->get_spad_size() * 1024); // in KB
   MemoryMap* scratchpad_map =
@@ -274,29 +292,34 @@ void NdpUnit::rf_writeback() {
   }
 }
 
+
+
 void NdpUnit::from_mem_handle() {
   for (int bank = 0; bank < m_config->get_l2d_num_banks(); bank++) {
     if (!m_from_mem[bank].empty()) {
       mem_fetch* mf = m_from_mem[bank].top();
       mf->current_state = "from mem handle";
-      if (m_dtlb->waiting_for_fill(mf)) {
-        if (m_dtlb->fill_port_free()) {
 
-          m_dtlb->fill(mf);
-          m_from_mem[bank].pop();
-          
-        }
+      if (m_dtlb->waiting_for_fill(mf)) {
+        if (m_dtlb->fill_port_free()) { m_dtlb->fill(mf); m_from_mem[bank].pop(); }
       } else if (m_itlb->waiting_for_fill(mf)) {
-        if (m_itlb->fill_port_free()) {
-          m_itlb->fill(mf);
-          m_from_mem[bank].pop();
-        }
+        if (m_itlb->fill_port_free()) { m_itlb->fill(mf); m_from_mem[bank].pop(); }
       } else if (m_icache->waiting_for_fill(mf)) {
-        if (m_icache->fill_port_free()) {
-          m_icache->fill(mf, m_config->get_sim_cycle());
-          m_from_mem[bank].pop();
-        }
+        if (m_icache->fill_port_free()) { m_icache->fill(mf, m_config->get_sim_cycle()); m_from_mem[bank].pop(); }
       } else {
+        // ★ 여기서 WRITE_ACK 감시
+        if (mf->get_type() == WRITE_ACK && mf->get_access_type()==GLOBAL_ACC_W) {
+          uint64_t line = mf->get_addr() & ~0x3FULL;
+          static const uint64_t WATCH = 0x00008000019a8600ULL;
+          if (line == WATCH) {
+            VectorData v = m_memory_map->Load(line);
+            std::ostringstream os;
+            os << "[WR-ACK] line=" << fmt::format("{:#018x}", line) << " mem(INT64):";
+            for (int i=0; i<8; ++i) os << " " << v.GetIntData(i);
+            spdlog::info(os.str());
+          }
+        }
+        // 원래대로 LDST로 전달
         m_ldst_unit->handle_from_mem(bank);
       }
     }

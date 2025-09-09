@@ -6,6 +6,7 @@
 #include "cache.h"
 #include "delay_queue.h"
 #include "m2ndp_config.h"
+namespace NDPSim { class MMU; }
 namespace NDPSim {
 class Tlb {
  public:
@@ -13,6 +14,7 @@ class Tlb {
   void set_ideal_tlb();
   bool fill_port_free();
   bool data_port_free();
+  void set_mmu(MMU* mmu) { m_mmu = mmu; }
   bool full();
   bool full(uint64_t mf_size);
   void fill(mem_fetch *mf);
@@ -27,6 +29,11 @@ class Tlb {
  private:
   uint64_t get_tlb_addr(uint64_t addr);
  private:
+ MMU* m_mmu = nullptr;
+int m_page_shift = 12;        // page_size의 log2
+
+// MMU 강제 fill이 바로 못 들어갈 때를 위한 보류 큐
+std::deque<mem_fetch*> m_force_fill_q;
   int m_id;
   int m_page_size;
   int m_tlb_entry_size;

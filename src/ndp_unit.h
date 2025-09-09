@@ -17,6 +17,8 @@
 #include "tlb.h"
 #include "uthread_generator.h"
 #endif
+
+namespace NDPSim { class MMU; }
 namespace NDPSim {
 
 class NdpUnit {
@@ -45,6 +47,8 @@ class NdpUnit {
 
   bool generate_uthreads() { return m_uthread_generator->generate_uthreads(1); }
 #endif
+ private:
+  MMU* m_mmu = nullptr;  // <-- 가드 밖으로 이동(항상 존재)
 
  private:
   M2NDPConfig* m_config;
