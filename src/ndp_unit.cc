@@ -71,7 +71,7 @@ NdpUnit::NdpUnit(M2NDPConfig* config, MemoryMap* memory_map, NdpStats* stats,
     m_dtlb->set_ideal_tlb();
     m_itlb->set_ideal_tlb();
   }
-  m_mmu = new MMU(m_memory_map, 0x0009000000000000ULL);
+  m_mmu = new MMU(m_memory_map, 0x0009000000000000ULL, m_config, m_dtlb, m_id);
   m_dtlb->set_mmu(m_mmu);
   m_itlb->set_mmu(m_mmu);
   m_uthread_generator = new UThreadGenerator(m_config, m_id, &m_matched_requests);
